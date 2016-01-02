@@ -1,0 +1,65 @@
+buildscript {
+    ext.kotlin_version = '1.0.0-beta-4584'
+    ext.kotlinx_html_version = '0.4.48'
+
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+apply plugin: 'kotlin2js'
+
+def dist = 'dist'
+def distJs = "${dist}/js"
+
+compileKotlin2Js {
+    kotlinOptions.sourceMap = true
+    kotlinOptions.outputFile = "${projectDir}/${distJs}/app.js"
+    kotlinOptions.suppressWarnings = true
+    kotlinOptions.verbose = true
+}
+
+sourceSets {
+    main.java.srcDirs += 'src/main/kotlin'
+}
+
+repositories {
+    jcenter()
+    maven {
+        url "http://dl.bintray.com/kotlinx/kotlinx"
+    }
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-js-library:$kotlin_version"
+    compile "org.jetbrains.kotlinx:kotlinx.html.jvm:${kotlinx_html_version}"
+    compile "org.jetbrains.kotlinx:kotlinx.html.js:${kotlinx_html_version}"
+
+    testCompile "org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version"
+    testCompile 'junit:junit:4.12'
+}
+
+task copyJsFilesFromDependencies(dependsOn: build) {
+    def f = new File("${projectDir}/${distJs}")
+    if (f.exists()) {
+        f.deleteDir()
+    }
+
+    configurations.compile.each { File file ->
+        copy {
+            includeEmptyDirs = false
+            from zipTree(file.absolutePath)
+            into "${projectDir}/${distJs}/lib"
+            include { fileTreeElement ->
+                def path = fileTreeElement.path
+                def meta = path.startsWith("META-INF/resources/") ||
+                        !path.startsWith("META-INF/")
+                path.endsWith(".js") && meta
+            }
+        }
+    }
+}
